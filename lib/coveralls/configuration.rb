@@ -37,6 +37,8 @@ module Coveralls
         set_service_params_for_tddium(config)
       elsif ENV['GITLAB_CI']
         set_service_params_for_gitlab(config)
+      elsif ENV['BUILDKITE']
+        set_service_params_for_buildkite(config)
       elsif ENV['COVERALLS_RUN_LOCALLY'] || Coveralls.testing
         set_service_params_for_coveralls_local(config)
       end
@@ -103,6 +105,15 @@ module Coveralls
       config[:service_job_id]       = ENV['CI_BUILD_ID']
       config[:service_branch]       = ENV['CI_BUILD_REF_NAME']
       config[:commit_sha]           = ENV['CI_BUILD_REF']
+    end
+
+    def self.set_service_params_for_buildkite(config)
+      config[:service_name]         = 'buildkite'
+      config[:service_number]       = ENV['BUILDKITE_BUILD_NUMBER']
+      config[:service_build_url]    = ENV['BUILDKITE_BUILD_URL']
+      config[:service_branch]       = ENV['BUILDKITE_BRANCH']
+      config[:service_pull_request] = ENV['BUILDKITE_PULL_REQUEST']
+      config[:commit_sha]           = ENV['BUILDKITE_COMMIT']
     end
 
     def self.set_service_params_for_coveralls_local(config)
@@ -220,6 +231,11 @@ module Coveralls
           {
             :branch => ENV['BRANCH_NAME'],
             :commit_sha => ENV['REVISION']
+          }
+        elsif ENV['BUILDKITE']
+          {
+            :branch => ENV['BUILDKITE_BRANCH'],
+            :commit_sha => ENV['BUILDKITE_COMMIT']
           }
         else
           {}
