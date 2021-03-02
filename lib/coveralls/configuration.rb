@@ -108,6 +108,18 @@ module Coveralls
     end
 
     def self.set_service_params_for_buildkite(config)
+      git_fallback = {
+        :id           => ENV['BUILDKITE_COMMIT'],
+        :author_name  => ENV['BUILDKITE_AUTHOR'],
+        :author_email => ENV['BUILDKITE_AUTHOR_EMAIL'],
+        :message      => ENV['BUILDKITE_MESSAGE'],
+        :branch       => ENV['BUILDKITE_BRANCH']
+      }
+
+      config[:git] = git_fallback.merge(config[:git]) do |_key, fallback_value, existing_value|
+        existing_value || fallback_value
+      end
+
       config[:service_name]         = 'buildkite'
       config[:service_number]       = ENV['BUILDKITE_BUILD_NUMBER']
       config[:service_build_url]    = ENV['BUILDKITE_BUILD_URL']
