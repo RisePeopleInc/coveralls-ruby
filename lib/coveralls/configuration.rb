@@ -109,17 +109,26 @@ module Coveralls
 
     def self.set_service_params_for_buildkite(config)
       git_fallback = {
-        :id           => ENV['BUILDKITE_COMMIT'],
-        :author_name  => ENV['BUILDKITE_AUTHOR'],
-        :author_email => ENV['BUILDKITE_AUTHOR_EMAIL'],
-        :message      => ENV['BUILDKITE_MESSAGE'],
-        :branch       => ENV['BUILDKITE_BRANCH']
+        :branch => ENV['BUILDKITE_BRANCH'],
+        :head   => {
+          :id           => ENV['BUILDKITE_COMMIT'],
+          :author_name  => ENV['BUILDKITE_BUILD_AUTHOR'],
+          :author_email => ENV['BUILDKITE_BUILD_AUTHOR_EMAIL'],
+          :message      => ENV['BUILDKITE_MESSAGE']
+        }
       }
 
-      config[:git] = git_fallback.merge(config[:git]) do |_key, fallback_value, existing_value|
-        existing_value || fallback_value
-      end
+      revert_to_fallback_values = ->(fallback_hash, existing_hash) {
+        fallback_hash.merge(existing_hash) do |_key, fallback_value, existing_value|
+          if fallback_value.is_a?(Hash) && existing_value.is_a?(Hash)
+            revert_to_fallback_values.(fallback_value, existing_value)
+          else
+            existing_value && !existing_value.empty? ? existing_value : fallback_value
+          end
+        end
+      }
 
+      config[:git]                  = revert_to_fallback_values.(git_fallback, config[:git])
       config[:service_name]         = 'buildkite'
       config[:service_number]       = ENV['BUILDKITE_BUILD_NUMBER']
       config[:service_build_url]    = ENV['BUILDKITE_BUILD_URL']
