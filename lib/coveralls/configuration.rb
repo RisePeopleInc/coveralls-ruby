@@ -108,6 +108,16 @@ module Coveralls
     end
 
     def self.set_service_params_for_buildkite(config)
+      config[:git]                  = apply_fallback_git_context_for_buildkite(config)
+      config[:service_name]         = 'buildkite'
+      config[:service_number]       = ENV['BUILDKITE_BUILD_NUMBER']
+      config[:service_build_url]    = ENV['BUILDKITE_BUILD_URL']
+      config[:service_branch]       = ENV['BUILDKITE_BRANCH']
+      config[:service_pull_request] = ENV['BUILDKITE_PULL_REQUEST']
+      config[:commit_sha]           = ENV['BUILDKITE_COMMIT']
+    end
+
+    def self.apply_fallback_git_context_for_buildkite(config)
       git_fallback = {
         :branch => ENV['BUILDKITE_BRANCH'],
         :head   => {
@@ -118,23 +128,17 @@ module Coveralls
         }
       }
 
-      revert_to_fallback_values = ->(fallback_hash, existing_hash) {
-        fallback_hash.merge(existing_hash) do |_key, fallback_value, existing_value|
-          if fallback_value.is_a?(Hash) && existing_value.is_a?(Hash)
-            revert_to_fallback_values.(fallback_value, existing_value)
-          else
-            existing_value && !existing_value.empty? ? existing_value : fallback_value
-          end
-        end
-      }
+      deep_merge_ignoring_nil_or_empty_values(git_fallback, config[:git])
+    end
 
-      config[:git]                  = revert_to_fallback_values.(git_fallback, config[:git])
-      config[:service_name]         = 'buildkite'
-      config[:service_number]       = ENV['BUILDKITE_BUILD_NUMBER']
-      config[:service_build_url]    = ENV['BUILDKITE_BUILD_URL']
-      config[:service_branch]       = ENV['BUILDKITE_BRANCH']
-      config[:service_pull_request] = ENV['BUILDKITE_PULL_REQUEST']
-      config[:commit_sha]           = ENV['BUILDKITE_COMMIT']
+    def self.deep_merge_ignoring_nil_or_empty_values(old, new)
+      old.merge(new) do |_key, old_value, new_value|
+        if old_value.is_a?(Hash) && new_value.is_a?(Hash)
+          deep_merge_ignoring_nil_or_empty_values(old_value, new_value)
+        else
+          (new_value.nil? || new_value.empty?) ? old_value : new_value
+        end
+      end
     end
 
     def self.set_service_params_for_coveralls_local(config)
